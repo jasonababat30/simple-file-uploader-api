@@ -1,6 +1,6 @@
 {
   "name": "simple-file-uploader-api",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Simple File Uploader API",
   "homepage": "https://github.com/jasonababat30/simple-file-uploader-api#readme",
   "bugs": {
@@ -12,7 +12,6 @@
   },
   "license": "ISC",
   "author": "",
-  "type": "module",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
@@ -23,12 +22,16 @@
   "devDependencies": {
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
+    "@types/multer": "^2.2.0",
     "@types/node": "^26.1.1",
     "tsx": "^4.23.0",
     "typescript": "^7.0.2"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1089.0",
     "cors": "^2.8.6",
-    "express": "^5.2.1"
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "multer": "^2.2.0"
   }
 }

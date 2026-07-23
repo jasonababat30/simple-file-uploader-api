@@ -7,7 +7,10 @@ import {
     S3ServiceException 
 } from "@aws-sdk/client-s3";
 import dotenv from "dotenv";
+import crypto from "crypto";
 import { ErrorWithStatusCode } from "./types";
+import { getFileType } from "./utils/get-file-type";
+import validateFileType from "./middlewares/validate-file-type";
 
 dotenv.config();
 
@@ -56,16 +59,9 @@ app.post("/", (req, res) => {
     })
 });
 
-app.post("/upload-single", upload.single("file"), async (req, res) => {
+app.post("/upload-single", upload.single("file"), validateFileType, async (req, res) => {
     try {
-        const file = req.file;
-
-        if (!file) {
-            throw {
-                message: "No file uploaded",
-                statusCode: 400,
-            }
-        }
+        const file = req.file!;
 
         if (!awsObj.bucketName) {
             throw {
@@ -74,17 +70,24 @@ app.post("/upload-single", upload.single("file"), async (req, res) => {
             }
         }
 
+        const folderName = getFileType(file)
+        const unique_file_name = crypto.randomUUID();
+
         const uploadCommand = new PutObjectCommand({
             Bucket: awsObj.bucketName,
-            Key: file.originalname,
+            Key: `${folderName}/${unique_file_name}`,
             Body: file.buffer,
             ContentType: file.mimetype
         });
 
-        const uploadResult = await s3Client.send(uploadCommand);
+        await s3Client.send(uploadCommand);
 
         res.send({
             message: "Upload request received",
+            data: {
+                type: folderName,
+                name: file.originalname
+            }
         });
     } catch (error) {
         console.error("❌ Error @ Upload Single: ", error);

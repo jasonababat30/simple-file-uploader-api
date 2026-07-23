@@ -11,6 +11,7 @@ import crypto from "crypto";
 import { ErrorWithStatusCode } from "./types";
 import { getFileType } from "./utils/get-file-type";
 import validateFileType from "./middlewares/validate-file-type";
+import fileSizeErrorHandling from "./middlewares/file-size-error-handling";
 
 dotenv.config();
 
@@ -43,7 +44,11 @@ const s3Client = new S3Client({
  * This is useful if you want to process the file before storing it, or if you want to store it in a database.
  * The file will be available in req.file.buffer.
  */
-const upload = multer();
+const upload = multer({
+    limits: {
+        fileSize: 10 * 1024 * 1024, // 10 MB
+    }
+});
 
 app.use(cors());
 app.use(express.json());
@@ -115,7 +120,10 @@ app.post("/upload-multiple", upload.array("files"), (req, res) => {
     res.send({
         message: "Upload multiple request received",
     })
-})
+});
+
+// Error Handling Middlewares:
+app.use(fileSizeErrorHandling);
 
 app.listen(port, () => {
     console.log(`✅ Server is running on port '${port}'`);

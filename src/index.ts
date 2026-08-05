@@ -4,6 +4,7 @@ import multer from "multer";
 import { 
     S3Client,
     PutObjectCommand,
+    GetObjectCommand,
     S3ServiceException 
 } from "@aws-sdk/client-s3";
 import dotenv from "dotenv";
@@ -12,6 +13,8 @@ import { ErrorWithStatusCode } from "./types";
 import { getFileType } from "./utils/get-file-type";
 import validateFileType from "./middlewares/validate-file-type";
 import fileSizeErrorHandling from "./middlewares/file-size-error-handling";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import path from "path";
 
 dotenv.config();
 
@@ -64,6 +67,132 @@ app.post("/", (req, res) => {
     })
 });
 
+app.get("/images/:imageKey", async (req, res) => {
+    try {
+        const imageKey = req.params.imageKey;
+
+        if (!imageKey) {
+            throw {
+                message: "Image Key is undefined",
+                statusCode: 400,
+            }
+        }
+
+        const retrieveImageCommand = new GetObjectCommand({
+            Bucket: awsObj.bucketName,
+            Key: `image/${imageKey}`
+        });
+
+        const url = await getSignedUrl(
+            s3Client,
+            retrieveImageCommand,
+            {
+                expiresIn: 60
+            }
+        );
+
+        res.send({
+            message: "Get image request received",
+            data: {
+                imageKey: req.params.imageKey,
+                url
+            }
+        })
+    } catch (error) {
+        console.error("❌ Error @ Get Image: ", error);
+        res
+            .status((error as ErrorWithStatusCode)?.statusCode ?? 500)
+            .send({
+                message: (error as Error)?.message ??  "An error occurred while fetching the image.",
+                error
+            });
+    }
+});
+
+app.get("/videos/:videoKey", async (req, res) => {
+    try {
+        const videoKey = req.params.videoKey;
+
+        if (!videoKey) {
+            throw {
+                message: "Video Key is undefined",
+                statusCode: 400,
+            }
+        }
+
+        const retrieveVideoCommand = new GetObjectCommand({
+            Bucket: awsObj.bucketName,
+            Key: `video/${videoKey}`
+        });
+
+        const url = await getSignedUrl(
+            s3Client,
+            retrieveVideoCommand,
+            {
+                expiresIn: 60
+            }
+        );
+
+        res.send({
+            message: "Get video request received",
+            data: {
+                videoKey: req.params.videoKey,
+                url
+            }
+        })
+    } catch (error) {
+        console.error("❌ Error @ Get Video: ", error);
+        res
+            .status((error as ErrorWithStatusCode)?.statusCode ?? 500)
+            .send({
+                message: (error as Error)?.message ??  "An error occurred while fetching the video.",
+                error
+            });
+    }
+});
+
+app.get("/pdfs/:pdfKey", async (req, res) => {
+    try {
+        const pdfKey = req.params.pdfKey;
+
+        if (!pdfKey) {
+            throw {
+                message: "PDF Key is undefined",
+                statusCode: 400,
+            }
+        }
+
+        const retrievePdfCommand = new GetObjectCommand({
+            Bucket: awsObj.bucketName,
+            Key: `pdf/${pdfKey}`
+        });
+
+        const url = await getSignedUrl(
+            s3Client,
+            retrievePdfCommand,
+            {
+                expiresIn: 60
+            }
+        );
+
+        res.send({
+            message: "Get pdf request received",
+            data: {
+                pdfKey: req.params.pdfKey,
+                url
+            }
+        })
+    } catch (error) {
+        console.error("❌ Error @ Get PDF: ", error);
+        res
+            .status((error as ErrorWithStatusCode)?.statusCode ?? 500)
+            .send({
+                message: (error as Error)?.message ??  "An error occurred while fetching the pdf.",
+                error
+            });
+    }
+});
+
 app.post("/upload-single", upload.single("file"), validateFileType, async (req, res) => {
     try {
         const file = req.file!;
@@ -77,21 +206,37 @@ app.post("/upload-single", upload.single("file"), validateFileType, async (req, 
 
         const folderName = getFileType(file)
         const unique_file_name = crypto.randomUUID();
+        const extension = path.extname(file.originalname);
 
         const uploadCommand = new PutObjectCommand({
             Bucket: awsObj.bucketName,
-            Key: `${folderName}/${unique_file_name}`,
+            Key: `${folderName}/${unique_file_name}${extension}`,
             Body: file.buffer,
             ContentType: file.mimetype
         });
 
         await s3Client.send(uploadCommand);
 
+        const retrieveImageCommand = new GetObjectCommand({
+            Bucket: awsObj.bucketName,
+            Key: `${folderName}/${unique_file_name}${extension}`
+        })
+
+        const url = await getSignedUrl(
+            s3Client,
+            retrieveImageCommand,
+            {
+                expiresIn: 60
+            }
+        )
+
         res.send({
             message: "Upload request received",
             data: {
                 type: folderName,
-                name: file.originalname
+                name: file.originalname,
+                key: `${unique_file_name}${extension}`,
+                url
             }
         });
     } catch (error) {
